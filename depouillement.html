@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pics2Mots — dépouillement des retours</title>
+  <meta name="robots" content="noindex" />
+  <style>
+    :root {
+      --orange: #ED7203;
+      --orange-fonce: #c85e00;
+      --orange-doux: #fff4ea;
+      --texte: #1e293b;
+      --muted: #64748b;
+      --fond: #f8fafc;
+      --bordure: #e2e8f0;
+      --vert: #0f7b46;
+      --rouge: #b91c1c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      margin: 0; padding: 20px; background: var(--fond); color: var(--texte);
+      line-height: 1.5;
+    }
+    .conteneur { max-width: 1400px; margin: 0 auto; }
+    header.entete {
+      background: #fff; border: 1px solid var(--bordure);
+      border-bottom: 4px solid var(--orange); border-radius: 12px;
+      padding: 14px 18px; margin-bottom: 16px;
+    }
+    header.entete h1 { margin: 0; font-size: 19px; }
+    header.entete p { margin: 3px 0 0; font-size: 13px; color: var(--muted); }
+    section {
+      background: #fff; border: 1px solid var(--bordure); border-radius: 12px;
+      padding: 16px 18px; margin-bottom: 16px;
+    }
+    h2 { margin: 0 0 10px; font-size: 16px; }
+    .depot {
+      border: 2px dashed var(--bordure); border-radius: 12px;
+      padding: 26px; text-align: center; color: var(--muted); font-size: 14px;
+      transition: all .12s ease; cursor: pointer;
+    }
+    .depot.survol { border-color: var(--orange); background: var(--orange-doux); color: var(--orange-fonce); }
+    .depot strong { color: var(--texte); }
+    button {
+      font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+      border-radius: 9px; padding: 9px 15px; border: 2px solid var(--bordure);
+      background: #fff; color: var(--texte);
+    }
+    button:hover:not(:disabled) { border-color: var(--orange); background: var(--orange-doux); }
+    button.principal { background: var(--orange); border-color: var(--orange); color: #fff; }
+    button.principal:hover:not(:disabled) { background: var(--orange-fonce); border-color: var(--orange-fonce); }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .boutons { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+    .etat { font-size: 13px; color: var(--muted); }
+    .etat.erreur { color: var(--rouge); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+    th {
+      font-size: 11px; text-transform: uppercase; letter-spacing: .03em;
+      color: var(--muted); position: sticky; top: 0; background: #fff;
+    }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .tableau { overflow: auto; max-height: 60vh; }
+    .synthese { display: flex; gap: 22px; flex-wrap: wrap; }
+    .synthese div { font-size: 14px; }
+    .synthese strong { font-size: 20px; color: var(--orange-fonce); display: block; }
+    .vide { color: var(--muted); font-size: 14px; margin: 0; }
+    .liste-erreurs { font-size: 13px; color: var(--rouge); margin: 8px 0 0; padding-left: 18px; }
+  </style>
+</head>
+<body>
+  <div class="conteneur">
+
+    <header class="entete">
+      <h1>Dépouillement des retours — Pics2Mots</h1>
+      <p>Déposez les fichiers <code>.json</code> reçus des testeurs. Rien n'est envoyé nulle part :
+      tout est traité dans ce navigateur.</p>
+    </header>
+
+    <section>
+      <h2>1. Charger les retours</h2>
+      <div class="depot" id="depot">
+        <strong>Glissez les fichiers ici</strong><br />
+        ou cliquez pour les choisir
+        <input type="file" id="fichiers" accept=".json,application/json" multiple hidden />
+      </div>
+      <div class="boutons">
+        <button type="button" class="principal" id="btn-csv" disabled>Exporter en CSV</button>
+        <button type="button" id="btn-vider" disabled>Tout effacer</button>
+        <span class="etat" id="etat">Aucun fichier chargé.</span>
+      </div>
+      <ul class="liste-erreurs" id="erreurs"></ul>
+    </section>
+
+    <section>
+      <h2>2. Synthèse</h2>
+      <div class="synthese" id="synthese">
+        <p class="vide">Rien à synthétiser pour le moment.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>3. Détail</h2>
+      <div class="tableau" id="tableau">
+        <p class="vide">Aucune réponse chargée.</p>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+  (function () {
+    "use strict";
+
+    const elDepot = document.getElementById("depot");
+    const elFichiers = document.getElementById("fichiers");
+    const elEtat = document.getElementById("etat");
+    const elErreurs = document.getElementById("erreurs");
+    const elSynthese = document.getElementById("synthese");
+    const elTableau = document.getElementById("tableau");
+    const elBtnCsv = document.getElementById("btn-csv");
+    const elBtnVider = document.getElementById("btn-vider");
+
+    const retours = [];
+
+    const LIBELLES = {
+      pc: "PC Windows",
+      "android-tablette": "Tablette Android",
+      "android-mobile": "Téléphone Android",
+      chromebook: "Chromebook",
+      ipad: "iPad",
+      autre: "Autre"
+    };
+
+    const LIBELLES_AUDIO = {
+      audioTeste: {
+        "preparee": "oui, préparée",
+        "sans-preparation": "oui, sans préparation",
+        "non-teste": "non"
+      },
+      audioPreference: {
+        naturelle: "voix naturelle",
+        navigateur: "voix de l'appareil",
+        equivalentes: "équivalentes",
+        "pas-compare": "non comparé"
+      },
+      audioTelechargement: {
+        acceptable: "acceptable",
+        "trop-lourd": "trop lourd",
+        "pas-concerne": "pas concerné"
+      }
+    };
+
+    const COLONNES = [
+      ["horodatage", "Date"],
+      ["appareil", "Appareil"],
+      ["navigateur", "Navigateur"],
+      ["ecran", "Écran"],
+      ["installe", "Installée"],
+      ["installation", "Installation"],
+      ["horsLigne", "Hors ligne"],
+      ["noteGlobale", "Note"],
+      ["priseEnMain", "Prise en main"],
+      ["recherche", "Recherche"],
+      ["entrainement", "Entraînement"],
+      ["audioTeste", "Audio testé"],
+      ["audioPreference", "Préférence audio"],
+      ["audioNoteNavigateur", "Voix appareil"],
+      ["audioNoteNaturelle", "Voix naturelle"],
+      ["audioTelechargement", "Poids de la voix"],
+      ["audioPrononciation", "Prononciation"],
+      ["gene", "Gêné par"],
+      ["manque", "Manque"],
+      ["probleme", "Problème"],
+      ["testeur", "Testeur"]
+    ];
+
+    function valeur(retour, cle) {
+      const r = retour.reponses || {};
+      const t = retour.technique || {};
+      switch (cle) {
+        case "horodatage": return retour.horodatage ? new Date(retour.horodatage).toLocaleString("fr-FR") : "";
+        case "appareil": return LIBELLES[r.appareil] || r.appareil || "";
+        case "navigateur": return t.navigateur || "";
+        case "ecran": return t.ecran || "";
+        case "installe": return t.installe ? "oui" : "non";
+        default:
+          if (LIBELLES_AUDIO[cle]) {
+            return LIBELLES_AUDIO[cle][r[cle]] || r[cle] || "";
+          }
+          return r[cle] === undefined || r[cle] === null ? "" : String(r[cle]);
+      }
+    }
+
+    function ajouter(retour) {
+      const empreinte = (retour.horodatage || "") + "|" + JSON.stringify(retour.reponses || {});
+      if (retours.some(r => r.__empreinte === empreinte)) return false;
+      retour.__empreinte = empreinte;
+      retours.push(retour);
+      return true;
+    }
+
+    function chargerFichiers(liste) {
+      const fichiers = Array.from(liste || []);
+      if (!fichiers.length) return;
+
+      elErreurs.innerHTML = "";
+      let restants = fichiers.length;
+      let ajoutes = 0;
+      const rejets = [];
+
+      fichiers.forEach(fichier => {
+        const lecteur = new FileReader();
+        lecteur.onload = () => {
+          try {
+            const donnees = JSON.parse(lecteur.result);
+            const tableau = Array.isArray(donnees) ? donnees : [donnees];
+            tableau.forEach(element => {
+              if (element && element.outil === "Pics2Mots" && element.reponses) {
+                if (ajouter(element)) ajoutes++;
+              } else {
+                rejets.push(fichier.name);
+              }
+            });
+          } catch (erreur) {
+            rejets.push(fichier.name);
+          } finally {
+            restants--;
+            if (restants === 0) terminer(ajoutes, rejets);
+          }
+        };
+        lecteur.onerror = () => {
+          rejets.push(fichier.name);
+          restants--;
+          if (restants === 0) terminer(ajoutes, rejets);
+        };
+        lecteur.readAsText(fichier);
+      });
+    }
+
+    function terminer(ajoutes, rejets) {
+      elEtat.className = "etat" + (rejets.length ? " erreur" : "");
+      elEtat.textContent = ajoutes + " retour(s) ajouté(s)"
+        + (rejets.length ? " · " + rejets.length + " fichier(s) ignoré(s)" : "")
+        + " · " + retours.length + " au total";
+
+      if (rejets.length) {
+        elErreurs.innerHTML = [...new Set(rejets)]
+          .map(nom => "<li>" + nom + " : ce n'est pas un fichier de retour Pics2Mots.</li>")
+          .join("");
+      }
+
+      afficher();
+    }
+
+    function moyenne(cle) {
+      const notes = retours
+        .map(r => Number((r.reponses || {})[cle]))
+        .filter(n => n > 0);
+      if (!notes.length) return null;
+      return (notes.reduce((a, b) => a + b, 0) / notes.length).toFixed(1);
+    }
+
+    function afficher() {
+      elBtnCsv.disabled = retours.length === 0;
+      elBtnVider.disabled = retours.length === 0;
+
+      if (!retours.length) {
+        elSynthese.innerHTML = '<p class="vide">Rien à synthétiser pour le moment.</p>';
+        elTableau.innerHTML = '<p class="vide">Aucune réponse chargée.</p>';
+        return;
+      }
+
+      const parAppareil = {};
+      retours.forEach(r => {
+        const a = (r.reponses || {}).appareil || "autre";
+        parAppareil[a] = (parAppareil[a] || 0) + 1;
+      });
+
+      const installes = retours.filter(r => (r.reponses || {}).installation === "oui").length;
+      const horsLigne = retours.filter(r => (r.reponses || {}).horsLigne === "oui").length;
+
+      /* L'indicateur qui décide de l'avenir de la couche audio : parmi ceux qui
+         ont réellement comparé les deux voix, combien préfèrent la naturelle ? */
+      const audioTestes = retours.filter(r => {
+        const v = (r.reponses || {}).audioTeste;
+        return v && v !== "non-teste";
+      }).length;
+      const compares = retours.filter(r =>
+        ["naturelle", "navigateur", "equivalentes"].includes((r.reponses || {}).audioPreference)
+      );
+      const prefNaturelle = compares.filter(r => r.reponses.audioPreference === "naturelle").length;
+      const prefNavigateur = compares.filter(r => r.reponses.audioPreference === "navigateur").length;
+
+      const bloc = (titre, valeur) => "<div><strong>" + valeur + "</strong>" + titre + "</div>";
+
+      elSynthese.innerHTML =
+        bloc("retour(s)", retours.length)
+        + bloc("note globale moyenne", moyenne("noteGlobale") || "—")
+        + bloc("prise en main moyenne", moyenne("priseEnMain") || "—")
+        + bloc("recherche moyenne", moyenne("recherche") || "—")
+        + bloc("installation réussie", installes + "/" + retours.length)
+        + bloc("hors ligne vérifié", horsLigne + "/" + retours.length)
+        + "<div style='flex-basis:100%'></div>"
+        + bloc("audio testé", audioTestes + "/" + retours.length)
+        + bloc("préfèrent la voix naturelle", prefNaturelle + "/" + compares.length)
+        + bloc("préfèrent la voix de l'appareil", prefNavigateur + "/" + compares.length)
+        + bloc("note voix de l'appareil", moyenne("audioNoteNavigateur") || "—")
+        + bloc("note voix naturelle", moyenne("audioNoteNaturelle") || "—")
+        + "<div style='flex-basis:100%'></div>"
+        + Object.entries(parAppareil)
+            .map(([code, nombre]) => bloc((LIBELLES[code] || code).toLowerCase(), nombre))
+            .join("");
+
+      elTableau.innerHTML = "<table><thead><tr>"
+        + COLONNES.map(([, titre]) => "<th>" + titre + "</th>").join("")
+        + "</tr></thead><tbody>"
+        + retours.map(retour => "<tr>"
+            + COLONNES.map(([cle]) => {
+                const brut = valeur(retour, cle);
+                const court = brut.length > 90 ? brut.slice(0, 90) + "…" : brut;
+                return "<td title='" + echapperHtml(brut) + "'>" + echapperHtml(court) + "</td>";
+              }).join("")
+            + "</tr>").join("")
+        + "</tbody></table>";
+    }
+
+    function echapperHtml(texte) {
+      return String(texte === undefined || texte === null ? "" : texte)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function echapperCsv(valeur) {
+      return '"' + String(valeur === undefined || valeur === null ? "" : valeur).replace(/"/g, '""') + '"';
+    }
+
+    document.getElementById("btn-csv").addEventListener("click", () => {
+      const entetes = COLONNES.map(([, titre]) => echapperCsv(titre)).join(";");
+      const lignes = retours.map(retour =>
+        COLONNES.map(([cle]) => echapperCsv(valeur(retour, cle))).join(";")
+      );
+
+      // Le point-virgule et le BOM permettent à Excel en français d'ouvrir
+      // le fichier directement, sans assistant d'importation.
+      const contenu = "\uFEFF" + [entetes].concat(lignes).join("\r\n");
+      const blob = new Blob([contenu], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const lien = document.createElement("a");
+      lien.href = url;
+      lien.download = "retours-pics2mots-" + new Date().toISOString().slice(0, 10) + ".csv";
+      lien.click();
+      URL.revokeObjectURL(url);
+
+      elEtat.className = "etat";
+      elEtat.textContent = "CSV exporté (" + retours.length + " ligne(s)).";
+    });
+
+    document.getElementById("btn-vider").addEventListener("click", () => {
+      retours.length = 0;
+      elErreurs.innerHTML = "";
+      elEtat.className = "etat";
+      elEtat.textContent = "Aucun fichier chargé.";
+      afficher();
+    });
+
+    elDepot.addEventListener("click", () => elFichiers.click());
+    elFichiers.addEventListener("change", () => {
+      chargerFichiers(elFichiers.files);
+      elFichiers.value = "";
+    });
+
+    ["dragenter", "dragover"].forEach(type => {
+      elDepot.addEventListener(type, evenement => {
+        evenement.preventDefault();
+        elDepot.classList.add("survol");
+      });
+    });
+
+    ["dragleave", "drop"].forEach(type => {
+      elDepot.addEventListener(type, evenement => {
+        evenement.preventDefault();
+        elDepot.classList.remove("survol");
+      });
+    });
+
+    elDepot.addEventListener("drop", evenement => {
+      if (evenement.dataTransfer && evenement.dataTransfer.files) {
+        chargerFichiers(evenement.dataTransfer.files);
+      }
+    });
+  })();
+  </script>
+</body>
+</html>

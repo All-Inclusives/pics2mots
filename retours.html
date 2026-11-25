@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pics2Mots — votre retour de test</title>
+  <meta name="robots" content="noindex" />
+  <style>
+    :root {
+      --orange: #ED7203;
+      --orange-fonce: #c85e00;
+      --orange-doux: #fff4ea;
+      --texte: #1e293b;
+      --muted: #64748b;
+      --fond: #f8fafc;
+      --bordure: #e2e8f0;
+      --vert: #0f7b46;
+      --rouge: #b91c1c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      margin: 0; padding: 20px;
+      background: var(--fond); color: var(--texte);
+      line-height: 1.55;
+    }
+    .conteneur { max-width: 760px; margin: 0 auto; }
+    header.entete {
+      background: #fff; border: 1px solid var(--bordure);
+      border-bottom: 4px solid var(--orange); border-radius: 12px;
+      padding: 16px 18px; margin-bottom: 16px;
+      display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    }
+    header.entete img { height: 52px; width: 52px; object-fit: contain; }
+    header.entete h1 { margin: 0; font-size: 20px; }
+    header.entete p { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+    section {
+      background: #fff; border: 1px solid var(--bordure); border-radius: 12px;
+      padding: 16px 18px; margin-bottom: 16px;
+    }
+    section h2 { margin: 0 0 4px; font-size: 16px; }
+    section p.aide { margin: 0 0 14px; font-size: 13px; color: var(--muted); }
+    fieldset { border: 0; padding: 0; margin: 0 0 18px; }
+    fieldset:last-child { margin-bottom: 0; }
+    legend { font-weight: 700; font-size: 14px; padding: 0; margin-bottom: 8px; }
+    legend .num { color: var(--orange-fonce); margin-right: 4px; }
+    .choix { display: flex; flex-wrap: wrap; gap: 8px; }
+    .choix label {
+      display: inline-flex; align-items: center; gap: 7px;
+      border: 2px solid var(--bordure); border-radius: 999px;
+      padding: 7px 14px; font-size: 14px; cursor: pointer;
+      background: #fff; transition: all .12s ease;
+    }
+    .choix label:hover { border-color: var(--orange); background: var(--orange-doux); }
+    .choix input { accent-color: var(--orange); margin: 0; }
+    .choix input:checked + span { font-weight: 700; }
+    .choix label:has(input:checked) {
+      border-color: var(--orange); background: var(--orange-doux); color: var(--orange-fonce);
+    }
+    textarea, input[type="text"] {
+      width: 100%; font: inherit; font-size: 14px;
+      border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 10px;
+      background: #fff; color: var(--texte); resize: vertical;
+    }
+    textarea { min-height: 70px; }
+    textarea:focus, input:focus { outline: 2px solid var(--orange); border-color: var(--orange); }
+    .note { display: flex; gap: 8px; flex-wrap: wrap; }
+    .note label {
+      width: 44px; height: 44px; border: 2px solid var(--bordure); border-radius: 10px;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-weight: 700; cursor: pointer; background: #fff;
+    }
+    .note label:hover { border-color: var(--orange); background: var(--orange-doux); }
+    .note label:has(input:checked) { background: var(--orange); border-color: var(--orange); color: #fff; }
+    .note input { position: absolute; opacity: 0; pointer-events: none; }
+    .boutons { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    button {
+      font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+      border-radius: 9px; padding: 10px 16px; border: 2px solid var(--bordure);
+      background: #fff; color: var(--texte); transition: all .12s ease;
+    }
+    button:hover:not(:disabled) { border-color: var(--orange); background: var(--orange-doux); }
+    button.principal { background: var(--orange); border-color: var(--orange); color: #fff; }
+    button.principal:hover:not(:disabled) { background: var(--orange-fonce); border-color: var(--orange-fonce); }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .etat { font-size: 13px; color: var(--vert); font-weight: 600; min-height: 20px; }
+    .etat.erreur { color: var(--rouge); }
+    .technique {
+      font-size: 12px; color: var(--muted); background: var(--fond);
+      border-radius: 8px; padding: 10px 12px; margin-top: 10px;
+    }
+    .technique code { color: var(--texte); }
+    .manquant { outline: 2px solid var(--rouge); border-radius: 8px; }
+    details summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+    .merci { display: none; }
+    .merci.visible { display: block; }
+  </style>
+</head>
+<body>
+  <div class="conteneur">
+
+    <header class="entete">
+      <img src="logo.png" alt="" onerror="this.style.visibility='hidden'" />
+      <div>
+        <h1>Votre retour sur Pics2Mots</h1>
+        <p>Trois minutes. Vos réponses nous disent quoi corriger avant la mise en service.</p>
+      </div>
+    </header>
+
+    <form id="formulaire" novalidate>
+
+      <section>
+        <h2>Votre test</h2>
+        <p class="aide">Les informations sur votre appareil sont relevées automatiquement : vous n'avez rien à chercher.</p>
+
+        <fieldset id="bloc-appareil">
+          <legend><span class="num">1.</span>Sur quel appareil avez-vous testé ?</legend>
+          <div class="choix" id="choix-appareil"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend><span class="num">2.</span>Avez-vous réussi à installer l'application ?</legend>
+          <div class="choix">
+            <label><input type="radio" name="installation" value="oui" /><span>Oui</span></label>
+            <label><input type="radio" name="installation" value="non" /><span>Non</span></label>
+            <label><input type="radio" name="installation" value="pas-teste" /><span>Je n'ai pas essayé</span></label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend><span class="num">3.</span>Sans connexion, l'outil s'ouvre-t-il ?</legend>
+          <div class="choix">
+            <label><input type="radio" name="horsLigne" value="oui" /><span>Oui</span></label>
+            <label><input type="radio" name="horsLigne" value="non" /><span>Non</span></label>
+            <label><input type="radio" name="horsLigne" value="pas-teste" /><span>Je n'ai pas testé</span></label>
+          </div>
+        </fieldset>
+      </section>
+
+      <section>
+        <h2>Vos impressions</h2>
+        <p class="aide">1 = très mauvais, 5 = très bon.</p>
+
+        <fieldset id="bloc-note">
+          <legend><span class="num">4.</span>Note globale de l'outil</legend>
+          <div class="note" data-note="noteGlobale"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend><span class="num">5.</span>Facilité de prise en main</legend>
+          <div class="note" data-note="priseEnMain"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend><span class="num">6.</span>Qualité des résultats de recherche</legend>
+          <div class="note" data-note="recherche"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend><span class="num">7.</span>Le mode entraînement est-il clair ?</legend>
+          <div class="choix">
+            <label><input type="radio" name="entrainement" value="clair" /><span>Clair</span></label>
+            <label><input type="radio" name="entrainement" value="confus" /><span>Confus</span></label>
+            <label><input type="radio" name="entrainement" value="pas-teste" /><span>Pas testé</span></label>
+          </div>
+        </fieldset>
+      </section>
+
+      <section id="section-audio">
+        <h2>L'audio</h2>
+        <p class="aide">
+          C'est le point que nous devons trancher : la voix naturelle, calculée et conservée
+          à l'avance, apporte-t-elle réellement quelque chose par rapport à la voix par
+          défaut de votre appareil ?
+        </p>
+
+        <fieldset id="bloc-audio">
+          <legend><span class="num">8.</span>Avez-vous écouté la voix naturelle ?</legend>
+          <div class="choix">
+            <label><input type="radio" name="audioTeste" value="preparee" /><span>Oui, après « Préparer l'audio »</span></label>
+            <label><input type="radio" name="audioTeste" value="sans-preparation" /><span>Oui, sans préparation</span></label>
+            <label><input type="radio" name="audioTeste" value="non-teste" /><span>Non, pas testé</span></label>
+          </div>
+        </fieldset>
+
+        <div id="audio-detail" style="display:none;">
+          <p class="aide" style="background:var(--orange-doux);padding:10px 12px;border-radius:8px;">
+            Pour juger, prenez une carte et écoutez le <strong>même mot</strong> deux fois :
+            d'abord avec la voix de votre appareil (case « Voix naturelle hors ligne »
+            décochée), puis avec la voix naturelle (case cochée).
+          </p>
+
+          <fieldset id="bloc-audio-preference">
+            <legend><span class="num">9.</span>Après cette comparaison, laquelle préférez-vous ?</legend>
+            <div class="choix">
+              <label><input type="radio" name="audioPreference" value="naturelle" /><span>La voix naturelle</span></label>
+              <label><input type="radio" name="audioPreference" value="navigateur" /><span>La voix de mon appareil</span></label>
+              <label><input type="radio" name="audioPreference" value="equivalentes" /><span>Les deux se valent</span></label>
+              <label><input type="radio" name="audioPreference" value="pas-compare" /><span>Je n'ai pas comparé</span></label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend><span class="num">10.</span>Note de la voix de votre appareil</legend>
+            <div class="note" data-note="audioNoteNavigateur"></div>
+          </fieldset>
+
+          <fieldset>
+            <legend><span class="num">11.</span>Note de la voix naturelle</legend>
+            <div class="note" data-note="audioNoteNaturelle"></div>
+          </fieldset>
+
+          <fieldset>
+            <legend><span class="num">12.</span>Le téléchargement de la voix (60 Mo, ou 27 Mo en version légère)</legend>
+            <div class="choix">
+              <label><input type="radio" name="audioTelechargement" value="acceptable" /><span>Acceptable</span></label>
+              <label><input type="radio" name="audioTelechargement" value="trop-lourd" /><span>Trop lourd</span></label>
+              <label><input type="radio" name="audioTelechargement" value="pas-concerne" /><span>Je n'ai pas eu à le faire</span></label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend><span class="num">13.</span>Un mot mal prononcé ?</legend>
+            <textarea id="audioPrononciation" placeholder="Le mot tel qu'il est prononcé, et ce qu'il faudrait entendre. Exemple : « quatre-vingt-dix » prononcé « quatre-vingt-dix-sept »."></textarea>
+          </fieldset>
+        </div>
+      </section>
+
+      <section>
+        <h2>Vos remarques</h2>
+        <p class="aide">C'est ici que se trouve l'essentiel : ce que nous n'avons pas anticipé.</p>
+
+        <fieldset>
+          <legend><span class="num">14.</span>Qu'est-ce qui vous a gêné ?</legend>
+          <textarea id="gene" name="gene" placeholder="Un bouton difficile à trouver, un mot ambigu, une étape incompréhensible…"></textarea>
+        </fieldset>
+
+        <fieldset>
+          <legend><span class="num">15.</span>Qu'est-ce qui manque ?</legend>
+          <textarea id="manque" name="manque" placeholder="Une fonction qui vous aurait servi, un réglage absent…"></textarea>
+        </fieldset>
+
+        <fieldset>
+          <legend><span class="num">16.</span>Un problème précis à signaler ?</legend>
+          <textarea id="probleme" name="probleme" placeholder="Ce que vous faisiez, ce qui s'est passé, ce que vous attendiez."></textarea>
+        </fieldset>
+
+        <fieldset>
+          <legend>Votre prénom (facultatif)</legend>
+          <input type="text" id="testeur" name="testeur" placeholder="Pour savoir à qui revenir si besoin" />
+        </fieldset>
+      </section>
+
+      <section>
+        <div class="technique" id="technique"></div>
+
+        <div class="boutons" style="margin-top:14px;">
+          <button type="button" class="principal" id="btn-copier">Copier mes réponses</button>
+          <button type="button" id="btn-fichier">Télécharger le fichier (.json)</button>
+          <button type="button" id="btn-courriel">Envoyer par courriel</button>
+        </div>
+
+        <p class="etat" id="etat" role="status" aria-live="polite"></p>
+
+        <div class="merci" id="merci">
+          <p style="margin:0;font-size:14px;">
+            <strong>Merci.</strong> Envoyez maintenant vos réponses par courriel ou par message,
+            ou transmettez le fichier téléchargé.
+          </p>
+        </div>
+      </section>
+
+    </form>
+
+    <p style="font-size:12px;color:var(--muted);text-align:center;margin:0;">
+      Aucune donnée n'est envoyée automatiquement : ce formulaire reste sur votre appareil
+      jusqu'à ce que vous choisissiez de nous le transmettre.
+    </p>
+  </div>
+
+  <script>
+  (function () {
+    "use strict";
+
+    const CLE_BROUILLON = "pics2mots-retours-brouillon-v1";
+
+    const elFormulaire = document.getElementById("formulaire");
+    const elEtat = document.getElementById("etat");
+    const elMerci = document.getElementById("merci");
+    const elTechnique = document.getElementById("technique");
+
+    /* ---------- appareil et navigateur ---------- */
+
+    function devinerAppareil() {
+      const ua = navigator.userAgent;
+      const tactile = navigator.maxTouchPoints > 0;
+      if (/iPad/.test(ua) || (/Macintosh/.test(ua) && tactile)) return "ipad";
+      if (/Android/.test(ua) && /Mobile/.test(ua)) return "android-mobile";
+      if (/Android/.test(ua)) return "android-tablette";
+      if (/CrOS/.test(ua)) return "chromebook";
+      if (/Windows|Macintosh|Linux/.test(ua)) return "pc";
+      return "autre";
+    }
+
+    function devinerNavigateur() {
+      const ua = navigator.userAgent;
+      if (/Edg\//.test(ua)) return "Edge";
+      if (/OPR\//.test(ua)) return "Opera";
+      if (/Chrome\//.test(ua)) return "Chrome";
+      if (/Firefox\//.test(ua)) return "Firefox";
+      if (/Safari\//.test(ua)) return "Safari";
+      return "inconnu";
+    }
+
+    function estInstalle() {
+      try {
+        return window.matchMedia("(display-mode: standalone)").matches
+          || window.navigator.standalone === true;
+      } catch (erreur) {
+        return false;
+      }
+    }
+
+    const technique = {
+      navigateur: devinerNavigateur(),
+      ecran: window.screen ? window.screen.width + "x" + window.screen.height : "?",
+      installe: estInstalle(),
+      langue: navigator.language || "?",
+      agent: navigator.userAgent
+    };
+
+    elTechnique.innerHTML = "Relevé automatiquement : <code>"
+      + technique.navigateur + "</code> · écran <code>" + technique.ecran
+      + "</code> · application " + (technique.installe ? "installée" : "non installée")
+      + " · langue <code>" + technique.langue + "</code>";
+
+    /* ---------- construction des choix ---------- */
+
+    const APPAREILS = [
+      ["pc", "PC Windows"],
+      ["android-tablette", "Tablette Android"],
+      ["android-mobile", "Téléphone Android"],
+      ["chromebook", "Chromebook"],
+      ["ipad", "iPad"],
+      ["autre", "Autre"]
+    ];
+
+    const zoneAppareil = document.getElementById("choix-appareil");
+    zoneAppareil.innerHTML = APPAREILS.map(([valeur, libelle]) => `
+      <label><input type="radio" name="appareil" value="${valeur}" /><span>${libelle}</span></label>
+    `).join("");
+
+    document.querySelectorAll(".note").forEach(zone => {
+      const champ = zone.dataset.note;
+      let morceaux = "";
+      for (let i = 1; i <= 5; i++) {
+        morceaux += `<label><input type="radio" name="${champ}" value="${i}" /><span>${i}</span></label>`;
+      }
+      zone.innerHTML = morceaux;
+    });
+
+    /* ---------- pré-remplissage ---------- */
+
+    const appareilDevine = devinerAppareil();
+    const radioDevine = document.querySelector('input[name="appareil"][value="' + appareilDevine + '"]');
+    if (radioDevine) radioDevine.checked = true;
+
+    /* ---------- brouillon ---------- */
+
+    function lireChamps() {
+      const lire = (nom) => {
+        const coche = document.querySelector('input[name="' + nom + '"]:checked');
+        return coche ? coche.value : "";
+      };
+
+      const champs = {
+        appareil: lire("appareil"),
+        installation: lire("installation"),
+        horsLigne: lire("horsLigne"),
+        entrainement: lire("entrainement"),
+        noteGlobale: lire("noteGlobale"),
+        priseEnMain: lire("priseEnMain"),
+        recherche: lire("recherche"),
+        audioTeste: lire("audioTeste"),
+        audioPreference: lire("audioPreference"),
+        audioNoteNavigateur: lire("audioNoteNavigateur"),
+        audioNoteNaturelle: lire("audioNoteNaturelle"),
+        audioTelechargement: lire("audioTelechargement"),
+        audioPrononciation: document.getElementById("audioPrononciation").value.trim(),
+        gene: document.getElementById("gene").value.trim(),
+        manque: document.getElementById("manque").value.trim(),
+        probleme: document.getElementById("probleme").value.trim(),
+        testeur: document.getElementById("testeur").value.trim()
+      };
+
+      /* Si l'audio n'a pas été testé, les réponses détaillées n'ont pas de sens :
+         on les vide pour ne pas fausser les moyennes au dépouillement. */
+      if (!champs.audioTeste || champs.audioTeste === "non-teste") {
+        champs.audioPreference = "";
+        champs.audioNoteNavigateur = "";
+        champs.audioNoteNaturelle = "";
+        champs.audioTelechargement = "";
+        champs.audioPrononciation = "";
+      }
+
+      return champs;
+    }
+
+    function ecrireBrouillon() {
+      try {
+        window.localStorage.setItem(CLE_BROUILLON, JSON.stringify(lireChamps()));
+      } catch (erreur) { /* stockage indisponible : sans importance */ }
+    }
+
+    function restaurerBrouillon() {
+      let brut = null;
+      try { brut = window.localStorage.getItem(CLE_BROUILLON); } catch (erreur) { return; }
+      if (!brut) return;
+      let brouillon = null;
+      try { brouillon = JSON.parse(brut); } catch (erreur) { return; }
+      if (!brouillon || typeof brouillon !== "object") return;
+
+      ["appareil", "installation", "horsLigne", "entrainement",
+       "noteGlobale", "priseEnMain", "recherche",
+       "audioTeste", "audioPreference", "audioNoteNavigateur",
+       "audioNoteNaturelle", "audioTelechargement"].forEach(nom => {
+        if (!brouillon[nom]) return;
+        const choix = document.querySelector('input[name="' + nom + '"][value="' + brouillon[nom] + '"]');
+        if (choix) choix.checked = true;
+      });
+      ["gene", "manque", "probleme", "testeur", "audioPrononciation"].forEach(nom => {
+        if (typeof brouillon[nom] === "string" && brouillon[nom]) {
+          document.getElementById(nom).value = brouillon[nom];
+        }
+      });
+    }
+
+    restaurerBrouillon();
+
+    /* Le détail audio n'apparaît que si le testeur a réellement écouté la voix
+       naturelle : sinon le questionnaire paraît plus court, et des réponses
+       sans objet ne viennent pas fausser les moyennes. */
+    const elAudioDetail = document.getElementById("audio-detail");
+
+    function majZoneAudio() {
+      const coche = document.querySelector('input[name="audioTeste"]:checked');
+      elAudioDetail.style.display = (coche && coche.value !== "non-teste") ? "block" : "none";
+    }
+
+    document.querySelectorAll('input[name="audioTeste"]').forEach(radio => {
+      radio.addEventListener("change", majZoneAudio);
+    });
+    majZoneAudio();
+
+    elFormulaire.addEventListener("input", ecrireBrouillon);
+    elFormulaire.addEventListener("change", ecrireBrouillon);
+
+    /* ---------- validation et résumé ---------- */
+
+    function libelleAppareil(valeur) {
+      const trouve = APPAREILS.find(([v]) => v === valeur);
+      return trouve ? trouve[1] : valeur;
+    }
+
+    function valider() {
+      document.querySelectorAll(".manquant").forEach(el => el.classList.remove("manquant"));
+      const champs = lireChamps();
+      const manquants = [];
+      if (!champs.appareil) manquants.push("bloc-appareil");
+      if (!champs.noteGlobale) manquants.push("bloc-note");
+      if (!champs.audioTeste) manquants.push("bloc-audio");
+
+      if (!manquants.length) return champs;
+
+      manquants.forEach(id => document.getElementById(id).classList.add("manquant"));
+      elEtat.className = "etat erreur";
+      elEtat.textContent = "Il manque une réponse indispensable : l'appareil, la note globale, "
+        + "et ce que vous avez pensé de l'audio.";
+      document.getElementById(manquants[0]).scrollIntoView({ behavior: "smooth", block: "center" });
+      return null;
+    }
+
+    function construireReponse(champs) {
+      return {
+        outil: "Pics2Mots",
+        version: 1,
+        horodatage: new Date().toISOString(),
+        technique: technique,
+        reponses: champs
+      };
+    }
+
+    function resumeTexte(champs) {
+      const lignes = [
+        "Retour de test — Pics2Mots",
+        "Date : " + new Date().toLocaleString("fr-FR"),
+        "",
+        "Appareil : " + libelleAppareil(champs.appareil),
+        "Relevé : " + technique.navigateur + ", écran " + technique.ecran
+          + ", " + (technique.installe ? "application installée" : "navigateur"),
+        "",
+        "Installation : " + (champs.installation || "non renseigné"),
+        "Ouverture hors connexion : " + (champs.horsLigne || "non renseigné"),
+        "",
+        "Note globale : " + (champs.noteGlobale || "-") + "/5",
+        "Prise en main : " + (champs.priseEnMain || "-") + "/5",
+        "Recherche : " + (champs.recherche || "-") + "/5",
+        "Mode entraînement : " + (champs.entrainement || "non renseigné"),
+        ""
+      ];
+
+      if (champs.audioTeste && champs.audioTeste !== "non-teste") {
+        lignes.push(
+          "Audio — voix naturelle testée : "
+            + (champs.audioTeste === "preparee" ? "oui, après préparation" : "oui, sans préparation"),
+          "Préférence après comparaison : " + (champs.audioPreference || "non renseigné"),
+          "Note de la voix de l'appareil : " + (champs.audioNoteNavigateur || "-") + "/5",
+          "Note de la voix naturelle : " + (champs.audioNoteNaturelle || "-") + "/5",
+          "Téléchargement de la voix : " + (champs.audioTelechargement || "non renseigné"),
+          champs.audioPrononciation
+            ? "Mot mal prononcé : " + champs.audioPrononciation
+            : "Prononciation : rien à signaler",
+          ""
+        );
+      } else {
+        lignes.push("Audio : non testé", "");
+      }
+
+      if (champs.gene) lignes.push("Ce qui a gêné : " + champs.gene, "");
+      if (champs.manque) lignes.push("Ce qui manque : " + champs.manque, "");
+      if (champs.probleme) lignes.push("Problème rencontré : " + champs.probleme, "");
+      if (champs.testeur) lignes.push("Testeur : " + champs.testeur);
+
+      return lignes.join("\n");
+    }
+
+    function signaler(message, erreur) {
+      elEtat.className = "etat" + (erreur ? " erreur" : "");
+      elEtat.textContent = message;
+      if (!erreur) elMerci.classList.add("visible");
+    }
+
+    /* ---------- actions ---------- */
+
+    document.getElementById("btn-copier").addEventListener("click", async () => {
+      const champs = valider();
+      if (!champs) return;
+      const texte = resumeTexte(champs);
+
+      try {
+        await navigator.clipboard.writeText(texte);
+        signaler("Vos réponses sont copiées : collez-les dans un courriel ou un message.");
+        return;
+      } catch (erreur) {
+        // repli pour les navigateurs sans presse-papiers
+      }
+
+      const zone = document.createElement("textarea");
+      zone.value = texte;
+      zone.style.position = "fixed";
+      zone.style.opacity = "0";
+      document.body.appendChild(zone);
+      zone.select();
+      let ok = false;
+      try { ok = document.execCommand("copy"); } catch (erreur) { ok = false; }
+      document.body.removeChild(zone);
+
+      signaler(ok
+        ? "Vos réponses sont copiées : collez-les dans un courriel ou un message."
+        : "La copie a échoué : utilisez le bouton de téléchargement du fichier.",
+        !ok);
+    });
+
+    document.getElementById("btn-fichier").addEventListener("click", () => {
+      const champs = valider();
+      if (!champs) return;
+
+      const donnees = construireReponse(champs);
+      const blob = new Blob([JSON.stringify(donnees, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const lien = document.createElement("a");
+      const date = new Date().toISOString().slice(0, 10);
+      lien.href = url;
+      lien.download = "retour-pics2mots-" + date + "-" + (champs.appareil || "appareil") + ".json";
+      lien.click();
+      URL.revokeObjectURL(url);
+
+      signaler("Fichier téléchargé : joignez-le à votre message.");
+    });
+
+    document.getElementById("btn-courriel").addEventListener("click", () => {
+      const champs = valider();
+      if (!champs) return;
+
+      const sujet = "Retour de test Pics2Mots — " + libelleAppareil(champs.appareil);
+      let corps = resumeTexte(champs);
+
+      // Un lien mailto trop long est tronqué par les clients de messagerie.
+      const limite = 1600;
+      if (corps.length > limite) {
+        corps = corps.slice(0, limite) + "\n\n[Réponses tronquées : utilisez la copie ou le fichier .json]";
+      }
+
+      window.location.href = "mailto:?subject=" + encodeURIComponent(sujet)
+        + "&body=" + encodeURIComponent(corps);
+
+      signaler("Votre logiciel de messagerie devrait s'ouvrir. S'il ne s'ouvre pas, utilisez la copie.");
+    });
+  })();
+  </script>
+</body>
+</html>

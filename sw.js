@@ -15,10 +15,12 @@
     géré par l'application, pas par ce fichier.
 */
 
-const NOM_CACHE = "pics2mots-v1";
+const NOM_CACHE = "pics2mots-v2";
 
 const FICHIERS_APPLICATION = [
   "./index.html",
+  "./retours.html",
+  "./depouillement.html",
   "./styles/app.css",
   "./js/donnees.js",
   "./js/catalogue.js",
@@ -69,18 +71,30 @@ self.addEventListener("fetch", (evenement) => {
   const url = new URL(requete.url);
 
   // 1. Navigation : réseau d'abord, cache ensuite.
+  //
+  // Attention : le site comporte plusieurs pages (l'application, le
+  // questionnaire de retour, le dépouillement). Une réponse ne doit être
+  // enregistrée sous « index.html » que si c'est bien l'application ;
+  // sinon on écraserait la page principale par une autre.
   if (requete.mode === "navigate") {
-    evenement.respondWith(
-      fetch(requete)
-        .then((reponse) => {
-          const copie = reponse.clone();
-          caches.open(NOM_CACHE).then((cache) => cache.put("./index.html", copie));
-          return reponse;
-        })
-        .catch(() => caches.match("./index.html").then((enCache) =>
-          enCache || caches.match("./") || Response.error()
-        ))
-    );
+    evenement.respondWith((async () => {
+      const chemin = new URL(requete.url).pathname;
+      const estApplication = chemin.endsWith("/") || chemin.endsWith("/index.html");
+
+      try {
+        const reponse = await fetch(requete);
+        if (reponse && reponse.ok) {
+          const cache = await caches.open(NOM_CACHE);
+          await cache.put(estApplication ? "./index.html" : requete, reponse.clone());
+        }
+        return reponse;
+      } catch (erreur) {
+        const enCache = await caches.match(requete);
+        if (enCache) return enCache;
+        const application = await caches.match("./index.html");
+        return application || Response.error();
+      }
+    })());
     return;
   }
 
