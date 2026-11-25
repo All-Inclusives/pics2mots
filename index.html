@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pics2Mots — pictogrammes ARASAAC</title>
+
+  <!-- Version portable : installation sur Windows, Android et Chromebook -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#ED7203" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Pics2Mots" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icone-192.png" />
+  <link rel="apple-touch-icon" href="icone-192.png" />
+
+  <!-- Feuille de style séparée, pour être modifiée sans toucher au HTML. -->
+  <link rel="stylesheet" href="styles/app.css" />
+</head>
+<body>
+  <div class="conteneur">
+
+    <!-- REPRISE DE LA PLANCHE APRÈS FERMETURE -->
+    <div id="banniere-reprise" class="banniere-reprise no-print" role="status">
+      <span id="ui-banniere-reprise-texte"></span>
+      <div class="groupe-boutons">
+        <button type="button" id="btn-reprise-neuve" class="btn-contour"></button>
+        <button type="button" id="btn-reprise-fermer" title="Fermer">✕</button>
+      </div>
+    </div>
+
+    <!-- EN-TÊTE LOGO + DRAPEAUX -->
+    <header class="entete-asso">
+      <div class="marque">
+        <span class="logo-cadre" id="logo-cadre">
+          <img src="logo.png" alt="Logo de l'association" class="logo-asso"
+               onerror="document.getElementById('logo-cadre').classList.add('sans-logo'); this.remove();" />
+          <span class="logo-secours" aria-hidden="true">A</span>
+        </span>
+        <div>
+          <h1 id="ui-titre">Pics2Mots</h1>
+          <p id="ui-sous-titre">De l'image aux mots, des mots à l'image</p>
+        </div>
+      </div>
+
+      <div class="barre-drapeaux" aria-label="Langue de l'interface">
+        <span id="ui-label-langue-ui">Interface :</span>
+        <button type="button" class="btn-drapeau actif" data-ui-lang="fr">🇫🇷 FR</button>
+        <button type="button" class="btn-drapeau" data-ui-lang="en">🇬🇧 EN</button>
+        <button type="button" class="btn-drapeau" data-ui-lang="es">🇪🇸 ES</button>
+        <button type="button" class="btn-drapeau" data-ui-lang="de">🇩🇪 DE</button>
+        <button type="button" class="btn-drapeau" data-ui-lang="it">🇮🇹 IT</button>
+        <button type="button" class="btn-drapeau" data-ui-lang="pt">🇵🇹 PT</button>
+        <button type="button" class="btn-drapeau" data-ui-lang="ar">🇸🇦 AR</button>
+        <button type="button" class="btn-drapeau" data-ui-lang="uk">🇺🇦 UK</button>
+      </div>
+    </header>
+
+    <!-- ONGLETS ATELIER / MODE D'EMPLOI -->
+    <nav class="barre-onglets" aria-label="Sections de l'outil">
+      <button type="button" id="tab-atelier" class="btn-onglet actif" data-tab="atelier">Atelier</button>
+      <button type="button" id="tab-emploi" class="btn-onglet" data-tab="emploi">Mode d'emploi</button>
+    </nav>
+
+    <!-- VUE 1 : ATELIER -->
+    <div id="vue-atelier">
+      <!-- 1. PROPOSITIONS EN HAUT -->
+      <section class="panneau no-print">
+        <h2>
+          <span id="ui-titre-propositions">1. Propositions</span>
+          (<span id="compteur-choix">0</span>)
+        </h2>
+        <div id="catalogue" class="catalogue">
+          <p class="muted" id="ui-aide-propositions">Lancez une recherche ci-dessous pour afficher des propositions.</p>
+        </div>
+        <div id="ai-inspecteur-tags" class="inspecteur-tags"></div>
+      </section>
+
+      <!-- 2. RECHERCHE, LANGUE CIBLE, ENTRAÎNEMENT & SAUVEGARDE AU MILIEU -->
+      <section class="panneau panneau-centre no-print">
+        <div class="ligne">
+          <input type="text" id="input-theme" class="theme-input" list="datalist-tags" placeholder="Ex: numération ; lsf ou lsf ; numération" />
+          <datalist id="datalist-tags"></datalist>
+
+          <select id="select-nature">
+            <option value="all" id="opt-nat-all">Toutes natures</option>
+            <option value="3" id="opt-nat-3">Verbes (infinitif)</option>
+            <option value="2" id="opt-nat-2">Noms communs</option>
+            <option value="4" id="opt-nat-4">Adjectifs</option>
+          </select>
+
+          <label>
+            <span id="ui-label-qte">Quantité :</span>
+            <input type="number" id="input-limite" value="30" min="5" max="200" />
+          </label>
+
+          <button type="button" id="btn-chercher" class="btn">Rechercher</button>
+          <button type="button" id="btn-tout-ajouter" class="btn btn-contour">Tout ajouter</button>
+        </div>
+        <p class="astuce-recherche" id="ui-astuce-recherche">
+          Le <strong>1er critère</strong> fixe la priorité d'affichage (ex. : <code>numération ; lsf</code> ou <code>lsf ; numération</code>).
+        </p>
+
+        <div class="ligne">
+          <label>
+            <strong id="ui-label-langue-mots">Langue des mots :</strong>
+            <select id="select-langue-mots" title="Langue dans laquelle s'écrivent les mots des pictogrammes, quelle que soit la langue de la recherche.">
+              <option value="fr">Français (FR)</option>
+              <option value="en">Anglais (EN)</option>
+              <option value="es">Espagnol (ES)</option>
+              <option value="de">Allemand (DE)</option>
+              <option value="it">Italien (IT)</option>
+              <option value="pt">Portugais (PT)</option>
+              <option value="ar">Arabe (AR)</option>
+              <option value="uk">Ukrainien (UK)</option>
+            </select>
+          </label>
+
+          <button type="button" id="btn-harmoniser-mots" class="btn btn-contour" style="display:none;">Harmoniser les mots</button>
+          <span id="etat-harmonisation" class="astuce-recherche"></span>
+
+          <label>
+            <strong id="ui-label-langue-cible">Langue de l'imagier :</strong>
+            <select id="select-langue">
+              <option value="none" id="opt-langue-aucune">Langue unique — pas de traduction</option>
+              <option value="en" selected>Anglais (EN)</option>
+              <option value="es">Espagnol (ES)</option>
+              <option value="de">Allemand (DE)</option>
+              <option value="it">Italien (IT)</option>
+              <option value="pt">Portugais (PT)</option>
+              <option value="ar">Arabe (AR)</option>
+              <option value="uk">Ukrainien (UK)</option>
+            </select>
+          </label>
+
+          <button type="button" id="btn-entrainement" class="btn btn-contour">Mode entraînement : OFF</button>
+
+          <label class="audio-option">
+            <span id="ui-label-masquage">Masquer :</span>
+            <select id="select-masquage">
+              <option value="deux" id="opt-masq-deux">le mot et la traduction</option>
+              <option value="source" id="opt-masq-source">le mot (langue de travail)</option>
+              <option value="cible" id="opt-masq-cible">la traduction</option>
+            </select>
+          </label>
+
+          <button type="button" id="btn-fixer" class="btn">Fixer l'imagier</button>
+          <button type="button" id="btn-imprimer" class="btn btn-neutre">Imprimer / PDF</button>
+          <button type="button" id="btn-vider" class="btn btn-danger">Vider</button>
+        </div>
+
+        <div class="ligne">
+          <input type="text" id="nom-imagier" placeholder="Nom de l'imagier" />
+          <button type="button" id="btn-save-ordi" class="btn">Enregistrer sur l'ordi (.JSON)</button>
+          <label class="btn btn-contour btn-fichier">
+            <span id="ui-btn-ouvrir">Ouvrir un imagier (.JSON)</span>
+            <input type="file" id="input-load-ordi" accept=".json" style="display:none;" />
+          </label>
+        </div>
+
+        <div class="ligne">
+          <label class="audio-option">
+            <input type="checkbox" id="chk-audio-piper" />
+            <span id="ui-label-audio-piper">Voix naturelle hors ligne</span>
+          </label>
+
+          <select id="select-profil-audio">
+            <option value="medium" id="opt-audio-medium">Voix de qualité (60 Mo)</option>
+            <option value="low" id="opt-audio-low">Voix légère pour tablette (27 Mo)</option>
+          </select>
+
+          <button type="button" id="btn-preparer-audio" class="btn btn-contour">Préparer l'audio de la planche</button>
+        </div>
+
+        <div class="progression-audio" id="zone-progression-audio">
+          <div class="barre-audio"><i id="barre-audio"></i></div>
+          <span id="etat-preparation-audio"></span>
+        </div>
+
+        <p class="astuce-recherche" id="etat-audio"></p>
+
+        <details class="bloc-base-locale no-print" id="details-base-locale">
+          <summary id="ui-base-locale-titre">Base locale — rechercher sans réseau</summary>
+          <p class="astuce-recherche" id="ui-base-locale-aide">
+            Chaque catalogue est téléchargé une seule fois, puis conservé sur l'appareil. Les recherches
+            suivantes ne sollicitent plus le site d'ARASAAC et fonctionnent hors connexion.
+          </p>
+
+          <table class="table-base-locale">
+            <thead>
+              <tr>
+                <th>Langue</th>
+                <th>État</th>
+                <th class="col-poids">Poids</th>
+                <th>Dernière mise à jour</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="corps-base-locale"></tbody>
+          </table>
+
+          <div class="ligne-boutons">
+            <button type="button" id="btn-tout-telecharger" class="btn btn-contour">Tout télécharger (51 Mo)</button>
+            <button type="button" id="btn-verifier-bases" class="btn btn-contour">Vérifier les mises à jour</button>
+            <span id="etat-base-locale" class="astuce-recherche"></span>
+          </div>
+        </details>
+      </section>
+
+      <!-- 3. IMAGIER EN BAS -->
+      <section class="panneau" id="panel-imagier">
+        <h2>
+          <span id="ui-titre-imagier">2. Mon imagier</span>
+          (<span id="compteur-imagier">0</span>)
+          <span id="badge-fixe" class="badge" style="display:none;">Fixé</span>
+          <span id="badge-train" class="badge" style="display:none;">Entraînement</span>
+        </h2>
+        <div id="grille" class="grille-imagier"></div>
+      </section>
+    </div>
+
+    <!-- VUE 2 : MODE D'EMPLOI -->
+    <section id="vue-mode-emploi" class="panneau" style="display:none;">
+      <h2 id="ui-guide-titre">Mode d'emploi de Pics2Mots</h2>
+      <p class="muted" id="ui-guide-intro">
+        Retrouvez ici comment composer une planche, exploiter le moteur de recherche et enregistrer vos imagiers.
+      </p>
+
+      <!-- Le contenu est produit par js/app.js dans la langue de l'interface. -->
+      <div class="guide-grille" id="guide-contenu"></div>
+    </section>
+
+    <p class="licence-pied">
+      Pictogrammes : <strong>ARASAAC</strong> — Auteur : <strong>Sergio Palao</strong> — Licence : <strong>CC BY-NC-SA</strong> (Gobierno de Aragón).
+    </p>
+  </div>
+
+  <!-- Modules : données, catalogue local, audio, application.
+       Servir le dossier en http(s) pour l'installation et le hors-ligne. -->
+  <script src="js/donnees.js"></script>
+  <script src="js/catalogue.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

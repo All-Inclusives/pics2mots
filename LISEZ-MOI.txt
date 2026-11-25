@@ -1,0 +1,44 @@
+PICS2MOTS — DOSSIER À PUBLIER
+========================================
+
+Ce dossier contient tout ce qui doit être mis en ligne, et rien d'autre.
+
+CONTENU
+-------
+  index.html          la page
+  js/                 les quatre modules (données, catalogue, audio, application)
+  styles/app.css      la feuille de style
+  sw.js               le service worker (hors ligne et installation)
+  manifest.json       les informations d'installation
+  logo.png            le logo de l'association
+  icone-*.png         les icônes de l'application installée
+  .nojekyll           fichier vide, indispensable sur GitHub Pages
+
+PUBLICATION SUR GITHUB PAGES
+----------------------------
+Le contenu de ce dossier se dépose à la RACINE du dépôt, puis
+Settings > Pages > Branch : main, folder : / (root).
+
+Le fichier .nojekyll doit être présent : sans lui, GitHub traite le site
+avec Jekyll, ce qui peut altérer les fichiers et retarder la publication.
+
+CE QU'IL FAUT SAVOIR
+--------------------
+- Le site doit être servi en HTTPS : GitHub Pages le fait d'office.
+- L'adresse doit rester stable pendant toute la phase de test. Les planches,
+  les réglages et les catalogues sont rattachés à l'adresse : si elle change,
+  les testeurs perdent leur travail.
+- Ne pas ouvrir index.html par double-clic : sans serveur, il n'y a ni
+  installation, ni mode hors ligne, ni voix conservée.
+
+MISE À JOUR
+-----------
+Remplacer les fichiers modifiés en conservant les noms. Les testeurs
+récupèrent la nouvelle version en rechargeant la page (deux fois si
+nécessaire : la première charge le nouveau service worker, la seconde
+l'active).
+
+LICENCE DES PICTOGRAMMES
+------------------------
+ARASAAC — auteur : Sergio Palao — licence CC BY-NC-SA
+(Gobierno de Aragón). Mention intégrée à l'outil, à ne pas retirer.
