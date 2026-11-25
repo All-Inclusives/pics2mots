@@ -43,6 +43,13 @@
     }
     .depot.survol { border-color: var(--orange); background: var(--orange-doux); color: var(--orange-fonce); }
     .depot strong { color: var(--texte); }
+    textarea {
+      width: 100%; min-height: 110px; font: inherit; font-size: 13px;
+      border: 1px solid #cbd5e1; border-radius: 8px; padding: 9px 11px;
+      background: #fff; color: var(--texte); resize: vertical;
+      font-family: ui-monospace, Consolas, monospace;
+    }
+    textarea:focus { outline: 2px solid var(--orange); border-color: var(--orange); }
     button {
       font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
       border-radius: 9px; padding: 9px 15px; border: 2px solid var(--bordure);
@@ -95,14 +102,27 @@
     </section>
 
     <section>
-      <h2>2. Synthèse</h2>
+      <h2>2. Coller un retour reçu par courriel</h2>
+      <p class="aide">
+        Un courriel ne transporte pas de pièce jointe automatiquement : si un testeur vous a
+        envoyé ses réponses par message, copiez le texte et collez-le ici. Plusieurs retours
+        à la fois sont acceptés, y compris cités dans une réponse.
+      </p>
+      <textarea id="texte-colle" placeholder="Retour de test — Pics2Mots&#10;Date : …&#10;Appareil : …"></textarea>
+      <div class="boutons">
+        <button type="button" class="principal" id="btn-analyser">Analyser le texte</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>3. Synthèse</h2>
       <div class="synthese" id="synthese">
         <p class="vide">Rien à synthétiser pour le moment.</p>
       </div>
     </section>
 
     <section>
-      <h2>3. Détail</h2>
+      <h2>4. Détail</h2>
       <div class="tableau" id="tableau">
         <p class="vide">Aucune réponse chargée.</p>
       </div>
@@ -254,6 +274,110 @@
 
       afficher();
     }
+
+    /* ---------- retours reçus par courriel ---------- */
+
+    const APPAR_INVERSE = {};
+    Object.entries(LIBELLES).forEach(([code, libelle]) => {
+      APPAR_INVERSE[libelle.toLowerCase()] = code;
+    });
+
+    const AUDIO_TESTE_INVERSE = {
+      "oui, après préparation": "preparee",
+      "oui, sans préparation": "sans-preparation",
+      "non testé": "non-teste"
+    };
+
+    function versIso(texte) {
+      const m = String(texte).match(/(\d{2})\/(\d{2})\/(\d{4})(?:[ ,]+(\d{1,2}):(\d{2}))?/);
+      if (!m) return new Date().toISOString();
+      const [, jour, mois, annee, heure, minute] = m;
+      return new Date(annee + "-" + mois + "-" + jour + "T"
+        + String(heure || "12").padStart(2, "0") + ":"
+        + String(minute || "00").padStart(2, "0") + ":00").toISOString();
+    }
+
+    function analyserBloc(brut) {
+      // Un message transféré est préfixé par « > » : on nettoie avant lecture.
+      const bloc = brut.replace(/^[ \t]*>[ >]*/gm, "");
+
+      const champ = (etiquette) => {
+        const m = bloc.match(new RegExp("^" + etiquette + "\\s*:\\s*(.*)$", "im"));
+        return m ? m[1].trim() : "";
+      };
+
+      const note = (valeur) => {
+        const m = String(valeur).match(/(\d)\s*\/\s*5/);
+        return m ? m[1] : "";
+      };
+
+      const releve = champ("Relevé");
+      const navigateur = (releve.match(/^([^,]+)/) || [])[1] || "";
+      const ecran = (releve.match(/écran\s+([0-9]+x[0-9]+)/) || [])[1] || "";
+      const installe = /installée/.test(releve);
+
+      const appareilTexte = champ("Appareil").toLowerCase();
+      const audioTexte = champ("Audio[^:]*");
+      const prononciation = champ("Prononciation");
+
+      return {
+        outil: "Pics2Mots",
+        version: 1,
+        horodatage: versIso(champ("Date")),
+        source: "courriel",
+        technique: { navigateur: navigateur, ecran: ecran, installe: installe },
+        reponses: {
+          appareil: APPAR_INVERSE[appareilTexte] || "",
+          installation: champ("Installation"),
+          horsLigne: champ("Ouverture hors connexion"),
+          noteGlobale: note(champ("Note globale")),
+          priseEnMain: note(champ("Prise en main")),
+          recherche: note(champ("Recherche")),
+          entrainement: champ("Mode entraînement"),
+          audioTeste: AUDIO_TESTE_INVERSE[audioTexte.toLowerCase()]
+            || (/non test/i.test(audioTexte) ? "non-teste" : ""),
+          audioPreference: champ("Préférence après comparaison"),
+          audioNoteNavigateur: note(champ("Note de la voix de l'appareil")),
+          audioNoteNaturelle: note(champ("Note de la voix naturelle")),
+          audioTelechargement: champ("Téléchargement de la voix"),
+          audioPrononciation: /rien à signaler/i.test(prononciation) ? "" : prononciation,
+          gene: champ("Ce qui a gêné"),
+          manque: champ("Ce qui manque"),
+          probleme: champ("Problème rencontré"),
+          testeur: champ("Testeur")
+        }
+      };
+    }
+
+    document.getElementById("btn-analyser").addEventListener("click", () => {
+      const zone = document.getElementById("texte-colle");
+      const texte = zone.value;
+      if (!texte.trim()) {
+        elEtat.className = "etat erreur";
+        elEtat.textContent = "Collez d'abord le texte d'un message.";
+        return;
+      }
+
+      const blocs = texte
+        .split(/Retour de test\s*[—–-]\s*Pics2Mots/gi)
+        .map(bloc => bloc.trim())
+        .filter(Boolean);
+
+      if (!blocs.length) {
+        elEtat.className = "etat erreur";
+        elEtat.textContent = "Aucun retour reconnu dans ce texte : il doit commencer par "
+          + "« Retour de test — Pics2Mots ».";
+        return;
+      }
+
+      let ajoutes = 0;
+      blocs.forEach(bloc => {
+        if (ajouter(analyserBloc(bloc))) ajoutes++;
+      });
+
+      zone.value = "";
+      terminer(ajoutes, []);
+    });
 
     function moyenne(cle) {
       const notes = retours

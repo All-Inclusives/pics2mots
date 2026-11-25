@@ -257,7 +257,7 @@
         <div class="boutons" style="margin-top:14px;">
           <button type="button" class="principal" id="btn-copier">Copier mes réponses</button>
           <button type="button" id="btn-fichier">Télécharger le fichier (.json)</button>
-          <button type="button" id="btn-courriel">Envoyer par courriel</button>
+          <button type="button" id="btn-courriel">Envoyer à l'association</button>
         </div>
 
         <p class="etat" id="etat" role="status" aria-live="polite"></p>
@@ -283,6 +283,13 @@
     "use strict";
 
     const CLE_BROUILLON = "pics2mots-retours-brouillon-v1";
+
+    /* Adresse qui reçoit les retours. Une seule ligne à changer ici. */
+    const ADRESSE_RETOUR = "bruno.ecard@gmail.com";
+
+    /* Si l'adresse est oubliée ou laissée à l'exemple, le bouton prévient au
+       lieu d'envoyer un courriel dans le vide. */
+    const ADRESSE_NON_CONFIGUREE = /exemple\.(org|com)|undefined|^\s*$/.test(ADRESSE_RETOUR);
 
     const elFormulaire = document.getElementById("formulaire");
     const elEtat = document.getElementById("etat");
@@ -490,6 +497,12 @@
       };
     }
 
+    /* Un retour de texte libre sur plusieurs lignes casserait la lecture du
+       message par le dépouillement : on le ramène sur une seule ligne. */
+    function uneLigne(texte) {
+      return String(texte || "").replace(/\s*\n+\s*/g, " / ").trim();
+    }
+
     function resumeTexte(champs) {
       const lignes = [
         "Retour de test — Pics2Mots",
@@ -517,19 +530,17 @@
           "Note de la voix de l'appareil : " + (champs.audioNoteNavigateur || "-") + "/5",
           "Note de la voix naturelle : " + (champs.audioNoteNaturelle || "-") + "/5",
           "Téléchargement de la voix : " + (champs.audioTelechargement || "non renseigné"),
-          champs.audioPrononciation
-            ? "Mot mal prononcé : " + champs.audioPrononciation
-            : "Prononciation : rien à signaler",
+          "Prononciation : " + (uneLigne(champs.audioPrononciation) || "rien à signaler"),
           ""
         );
       } else {
         lignes.push("Audio : non testé", "");
       }
 
-      if (champs.gene) lignes.push("Ce qui a gêné : " + champs.gene, "");
-      if (champs.manque) lignes.push("Ce qui manque : " + champs.manque, "");
-      if (champs.probleme) lignes.push("Problème rencontré : " + champs.probleme, "");
-      if (champs.testeur) lignes.push("Testeur : " + champs.testeur);
+      if (champs.gene) lignes.push("Ce qui a gêné : " + uneLigne(champs.gene), "");
+      if (champs.manque) lignes.push("Ce qui manque : " + uneLigne(champs.manque), "");
+      if (champs.probleme) lignes.push("Problème rencontré : " + uneLigne(champs.probleme), "");
+      if (champs.testeur) lignes.push("Testeur : " + uneLigne(champs.testeur));
 
       return lignes.join("\n");
     }
@@ -592,19 +603,44 @@
       const champs = valider();
       if (!champs) return;
 
-      const sujet = "Retour de test Pics2Mots — " + libelleAppareil(champs.appareil);
-      let corps = resumeTexte(champs);
-
-      // Un lien mailto trop long est tronqué par les clients de messagerie.
-      const limite = 1600;
-      if (corps.length > limite) {
-        corps = corps.slice(0, limite) + "\n\n[Réponses tronquées : utilisez la copie ou le fichier .json]";
+      if (ADRESSE_NON_CONFIGUREE) {
+        signaler("L'adresse de retour n'est pas encore configurée. "
+          + "Utilisez « Copier mes réponses » ou le fichier .json.", true);
+        return;
       }
 
-      window.location.href = "mailto:?subject=" + encodeURIComponent(sujet)
+      /* Objet conçu pour être filtrable et trié :
+         [Pics2Mots] 2025-11-25 · Tablette Android · note 4/5 · Marie
+         Le préfixe entre crochets permet une règle de classement automatique,
+         la date en tête permet le tri chronologique. */
+      const morceaux = ["[Pics2Mots]", new Date().toISOString().slice(0, 10),
+        libelleAppareil(champs.appareil)];
+      if (champs.noteGlobale) morceaux.push("note " + champs.noteGlobale + "/5");
+      if (champs.testeur) morceaux.push(champs.testeur);
+      const sujet = morceaux.join(" · ");
+
+      let corps = resumeTexte(champs);
+
+      /* Un lien mailto trop long est coupé par les clients de messagerie.
+         On mesure la longueur réellement transmise — le texte encodé, où
+         chaque accent compte pour six caractères — et non la longueur brute. */
+      const budget = 1800;
+      if (encodeURIComponent(corps).length > budget) {
+        const mention = "\n\n[Réponses tronquées : utilisez « Copier mes réponses » "
+          + "ou le fichier .json pour un retour complet]";
+        let coupe = corps;
+        while (coupe.length > 200 && encodeURIComponent(coupe + mention).length > budget) {
+          coupe = coupe.slice(0, Math.floor(coupe.length * 0.85));
+        }
+        corps = coupe + mention;
+      }
+
+      window.location.href = "mailto:" + ADRESSE_RETOUR
+        + "?subject=" + encodeURIComponent(sujet)
         + "&body=" + encodeURIComponent(corps);
 
-      signaler("Votre logiciel de messagerie devrait s'ouvrir. S'il ne s'ouvre pas, utilisez la copie.");
+      signaler("Votre logiciel de messagerie devrait s'ouvrir, l'adresse et l'objet déjà remplis. "
+        + "S'il ne s'ouvre pas, utilisez la copie.");
     });
   })();
   </script>
